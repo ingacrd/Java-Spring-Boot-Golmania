@@ -1,0 +1,7 @@
+server:
+  port: 8081
+
+football:
+  api:
+    key: ${FOOTBALL_API_KEY}
+    host: v3.football.api-sports.io
