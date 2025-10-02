@@ -1,39 +1,56 @@
 package com.ingaru.Java.golmania.models;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 public class Fixture {
-    private String fixtureId;
+    private long fixtureId;
+    private OffsetDateTime utcDate;
     private String date;
     private String time;
     private String place;
     private String city;
-    private String teams_home_name;
-    private String teams_home_logo;
-    private String teams_home_goals;
-    private String teams_away_name;
-    private String teams_away_logo;
-    private String teams_away_goals;
+    private String teamsHomeName;
+    private String teamsHomeLogo;
+    private Integer teamsHomeGoals;
+
+    private String teamsAwayName;
+    private String teamsAwayLogo;
+    private Integer teamsAwayGoals;
 
     public Fixture() {
     }
 
-    public String getFixtureId() {
+    // --- convenience accessors if you still want date/time strings like before:
+    public String getDate() { // e.g., 2023-09-08
+        return utcDate == null ? null : utcDate.atZoneSameInstant(ZoneId.of("UTC"))
+                .toLocalDate().toString();
+    }
+
+    public String getTime() { // e.g., 23:00
+        return utcDate == null ? null : utcDate.atZoneSameInstant(ZoneId.of("UTC"))
+                .toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"));
+    }
+
+    public long getFixtureId() {
         return fixtureId;
     }
 
-    public void setFixtureId(String fixtureId) {
+    public void setFixtureId(long fixtureId) {
         this.fixtureId = fixtureId;
     }
 
-    public String getDate() {
-        return date;
+    public OffsetDateTime getUtcDate() {
+        return utcDate;
+    }
+
+    public void setUtcDate(OffsetDateTime utcDate) {
+        this.utcDate = utcDate;
     }
 
     public void setDate(String date) {
         this.date = date;
-    }
-
-    public String getTime() {
-        return time;
     }
 
     public void setTime(String time) {
@@ -56,68 +73,71 @@ public class Fixture {
         this.city = city;
     }
 
-    public String getTeams_home_name() {
-        return teams_home_name;
+    public String getTeamsHomeName() {
+        return teamsHomeName;
     }
 
-    public void setTeams_home_name(String teams_home_name) {
-        this.teams_home_name = teams_home_name;
+    public void setTeamsHomeName(String teamsHomeName) {
+        this.teamsHomeName = teamsHomeName;
     }
 
-    public String getTeams_home_logo() {
-        return teams_home_logo;
+    public String getTeamsHomeLogo() {
+        return teamsHomeLogo;
     }
 
-    public void setTeams_home_logo(String teams_home_logo) {
-        this.teams_home_logo = teams_home_logo;
+    public void setTeamsHomeLogo(String teamsHomeLogo) {
+        this.teamsHomeLogo = teamsHomeLogo;
     }
 
-    public String getTeams_home_goals() {
-        return teams_home_goals;
+    public Integer getTeamsHomeGoals() {
+        return teamsHomeGoals;
     }
 
-    public void setTeams_home_goals(String teams_home_goals) {
-        this.teams_home_goals = teams_home_goals;
+    public void setTeamsHomeGoals(Integer teamsHomeGoals) {
+        this.teamsHomeGoals = teamsHomeGoals;
     }
 
-    public String getTeams_away_name() {
-        return teams_away_name;
+    public String getTeamsAwayName() {
+        return teamsAwayName;
     }
 
-    public void setTeams_away_name(String teams_away_name) {
-        this.teams_away_name = teams_away_name;
+    public void setTeamsAwayName(String teamsAwayName) {
+        this.teamsAwayName = teamsAwayName;
     }
 
-    public String getTeams_away_logo() {
-        return teams_away_logo;
+    public String getTeamsAwayLogo() {
+        return teamsAwayLogo;
     }
 
-    public void setTeams_away_logo(String teams_away_logo) {
-        this.teams_away_logo = teams_away_logo;
+    public void setTeamsAwayLogo(String teamsAwayLogo) {
+        this.teamsAwayLogo = teamsAwayLogo;
     }
 
-    public String getTeams_away_goals() {
-        return teams_away_goals;
+    public Integer getTeamsAwayGoals() {
+        return teamsAwayGoals;
     }
 
-    public void setTeams_away_goals(String teams_away_goals) {
-        this.teams_away_goals = teams_away_goals;
+    public void setTeamsAwayGoals(Integer teamsAwayGoals) {
+        this.teamsAwayGoals = teamsAwayGoals;
     }
 
     @Override
     public String toString() {
         return "Fixture{" +
-                "fixtureId='" + fixtureId + '\'' +
+                "fixtureId=" + fixtureId +
+                ", utcDate=" + utcDate +
                 ", date='" + date + '\'' +
                 ", time='" + time + '\'' +
                 ", place='" + place + '\'' +
                 ", city='" + city + '\'' +
-                ", teams_home_name='" + teams_home_name + '\'' +
-                ", teams_home_logo='" + teams_home_logo + '\'' +
-                ", teams_home_goals='" + teams_home_goals + '\'' +
-                ", teams_away_name='" + teams_away_name + '\'' +
-                ", teams_away_logo='" + teams_away_logo + '\'' +
-                ", teams_away_goals='" + teams_away_goals + '\'' +
+                ", teamsHomeName='" + teamsHomeName + '\'' +
+                ", teamsHomeLogo='" + teamsHomeLogo + '\'' +
+                ", teamsHomeGoals=" + teamsHomeGoals +
+                ", teamsAwayName='" + teamsAwayName + '\'' +
+                ", teamsAwayLogo='" + teamsAwayLogo + '\'' +
+                ", teamsAwayGoals=" + teamsAwayGoals +
                 '}';
     }
 }
+
+

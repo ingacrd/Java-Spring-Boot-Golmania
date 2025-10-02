@@ -37,7 +37,7 @@ public class FixtureController {
 
         Map<String, Object>  body = fixtureService.getFixturesByLeagueAndSeason(league, season);
 
-        // 2) Extraer la lista "response"
+        // 2) Extraer la lista "response"x`
         List<Map<String, Object>> response = (List<Map<String, Object>>) body.get("response");
 
         List<Fixture> fixtures = new ArrayList<>();
