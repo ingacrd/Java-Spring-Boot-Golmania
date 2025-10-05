@@ -2,6 +2,7 @@ package com.ingaru.Java.golmania.Services;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ingaru.Java.golmania.Repositories.FixtureRepository;
 import com.ingaru.Java.golmania.models.ApiFootballDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -10,12 +11,14 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import java.net.URI;
+import java.util.List;
 
 
 @Service
 public class FixtureService {
 
-    private final RestTemplate restTemplate;
+    private final FixtureRepository repo;
+    private final RestTemplate rest;
     private final ObjectMapper mapper;
 
     @Value("${football.api.key}")
@@ -24,9 +27,25 @@ public class FixtureService {
     @Value("${football.api.host:v3.football.api-sports.io}")
     private String apiHost;
 
-    public FixtureService(RestTemplate restTemplate,ObjectMapper mapper) {
-        this.restTemplate = restTemplate;
-        this.mapper = mapper;
+//    public FixtureService(RestTemplate restTemplate,ObjectMapper mapper) {
+//        this.restTemplate = restTemplate;
+//        this.mapper = mapper;
+//    }
+    public FixtureService(FixtureRepository repo) {
+        this.repo = repo;
+        this.rest = new RestTemplate();
+        this.mapper = new ObjectMapper();
+    }
+
+    public int importFixtures(int league, int season) {
+        var dto = getFixturesByLeagueAndSeason(league, season);
+        var items = dto.response();
+        if (items == null || items.isEmpty()) return 0;
+        repo.saveAll(items);
+        return items.size();
+    }
+    public List<ApiFootballDto.Item> listAll() {
+        return repo.findAll();
     }
 
     public ApiFootballDto.Item getFixtureById(long fixtureId) {
@@ -46,7 +65,7 @@ public class FixtureService {
 
         try {
 
-            ResponseEntity<String> resp = restTemplate.exchange(
+            ResponseEntity<String> resp = rest.exchange(
                     uri, HttpMethod.GET, entity, String.class);
             if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
                 throw new IllegalStateException("Upstream error: " + resp.getStatusCode());
@@ -83,7 +102,7 @@ public class FixtureService {
 
         try {
 
-            ResponseEntity<String> resp = restTemplate.exchange(
+            ResponseEntity<String> resp = rest.exchange(
                     uri, HttpMethod.GET, entity, String.class);
 
             if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
