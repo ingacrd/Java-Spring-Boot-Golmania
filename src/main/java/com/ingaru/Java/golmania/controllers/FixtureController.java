@@ -6,13 +6,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/fixtures")
 public class FixtureController {
 
     private final FixtureService fixtureService;
-
 
     public FixtureController(FixtureService fixtureService) {
         this.fixtureService = fixtureService;
@@ -23,15 +23,17 @@ public class FixtureController {
         return ResponseEntity.ok(fixtureService.getFixtureById(fixtureId));
     }
 
-    @GetMapping("/fixtures")
-    public ResponseEntity<ApiFootballDto> getFixturesByLeagueAndSeason(
-            @RequestParam("league") long league,
-            @RequestParam("season") int season) {
-
-        ApiFootballDto dto = fixtureService.getFixturesByLeagueAndSeason(league, season);
-        return ResponseEntity.ok(dto);
-
-        }
-
+    @GetMapping
+    public List<ApiFootballDto.Item> getFixtures() {
+        return fixtureService.listAll();
     }
+
+    @GetMapping("/ping")
+    public String ping() {
+        return "pong";
+    }
+
+
+
+}
 
