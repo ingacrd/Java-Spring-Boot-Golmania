@@ -27,84 +27,80 @@ public class FixtureService {
     @Value("${football.api.host:v3.football.api-sports.io}")
     private String apiHost;
 
-//    public FixtureService(RestTemplate restTemplate,ObjectMapper mapper) {
-//        this.restTemplate = restTemplate;
-//        this.mapper = mapper;
-//    }
     public FixtureService(FixtureRepository repo) {
         this.repo = repo;
         this.rest = new RestTemplate();
         this.mapper = new ObjectMapper();
     }
 
-    public int importFixtures(int league, int season) {
-        var dto = getFixturesByLeagueAndSeason(league, season);
-        var items = dto.response();
-        if (items == null || items.isEmpty()) return 0;
-        repo.saveAll(items);
-        return items.size();
-    }
+    // ---------- Public API ----------
+
+    /** Returns all fixtures from MongoDB. */
     public List<ApiFootballDto.Item> listAll() {
         return repo.findAll();
     }
 
+
+    /** Returns a fixture by its upstream id (which is also Mongo _id). */
     public ApiFootballDto.Item getFixtureById(long fixtureId) {
-        String baseUrl = "https://" + apiHost + "/fixtures";
-
-        URI uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
-                .queryParam("id", fixtureId)
-                .build(true)
-                .toUri();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("x-rapidapi-key", apiKey);
-        headers.set("x-rapidapi-host", apiHost);
-        headers.setAccept(java.util.List.of(MediaType.APPLICATION_JSON));
-
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        try {
-
-            ResponseEntity<String> resp = rest.exchange(
-                    uri, HttpMethod.GET, entity, String.class);
-            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
-                throw new IllegalStateException("Upstream error: " + resp.getStatusCode());
-            }
-
-            ApiFootballDto api = mapper.readValue(resp.getBody(), ApiFootballDto.class);
-
-            if (api.response() == null || api.response().isEmpty()) {
-                throw new IllegalArgumentException("Fixture " + fixtureId + " not found");
-            }
-
-            return api.response().getFirst();
-
-        } catch (RestClientException ex) {
-            throw new IllegalStateException("HTTP error calling API-Football", ex);
-        } catch (Exception ex) {
-            throw new IllegalStateException("Failed to parse API-Football response", ex);
-        }
+        return repo.findById(fixtureId).orElse(null);
     }
 
-    public ApiFootballDto getFixturesByLeagueAndSeason (long league, int season){
-        String baseUrl = "https://" + apiHost + "/fixtures";
+    /**
+     * Ensure DB is populated and up-to-date:
+     * - If empty: fetch (league=34, season=2026), upsert all, return all
+     * - If not empty: fetch and upsert (insert new + update changed), return all
+     */
+    public List<ApiFootballDto.Item> ensureSeedAndReturnAll() {
+        if (repo.count() == 0) {
+            upsertFromApi(34, 2026);
+        } else {
+            upsertFromApi(34, 2026);
+        }
+        return repo.findAll();
+    }
 
-        URI uri = UriComponentsBuilder.fromHttpUrl(baseUrl)
+    /** On-demand: fetch from API by league & season (raw). */
+    public ApiFootballDto getFixturesByLeagueAndSeason(long league, int season) {
+        return callApiForFixtures(league, season);
+    }
+// ---------- Internal helpers ----------
+
+    /** Fetch from API and upsert into Mongo with _id = fixtureId. */
+    private void upsertFromApi(long league, int season) {
+        ApiFootballDto dto = callApiForFixtures(league, season);
+
+        // Map each Item to set its Mongo _id (top-level id) from fixture.fixtureId
+        List<ApiFootballDto.Item> toSave = dto.response().stream()
+                .map(it -> new ApiFootballDto.Item(
+                        it.fixture().fixtureId(), // <-- Mongo _id
+                        it.fixture(),
+                        it.teams(),
+                        it.goals(),
+                        it.league()
+                ))
+                .toList();
+
+        repo.saveAll(toSave); // saveAll does insert-or-replace by _id
+    }
+
+    /** Low-level HTTP call + parse into ApiFootballDto. */
+    private ApiFootballDto callApiForFixtures(long league, int season) {
+        URI uri = UriComponentsBuilder
+                .fromUriString("https://" + apiHost + "/fixtures")
                 .queryParam("league", league)
                 .queryParam("season", season)
                 .build(true)
                 .toUri();
+
         HttpHeaders headers = new HttpHeaders();
         headers.set("x-rapidapi-key", apiKey);
         headers.set("x-rapidapi-host", apiHost);
 
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
+        HttpEntity<Void> reqEntity = new HttpEntity<>(headers);
 
         try {
-
-            ResponseEntity<String> resp = rest.exchange(
-                    uri, HttpMethod.GET, entity, String.class);
-
+            ResponseEntity<String> resp = rest.exchange(uri, HttpMethod.GET, reqEntity, String.class);
             if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
                 throw new IllegalStateException("Upstream error: " + resp.getStatusCode());
             }
@@ -116,6 +112,5 @@ public class FixtureService {
             throw new IllegalStateException("Failed to parse API-Football response", e);
         }
     }
-
 
 }
