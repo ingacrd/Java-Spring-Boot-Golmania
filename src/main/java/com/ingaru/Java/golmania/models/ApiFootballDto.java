@@ -1,21 +1,27 @@
 package com.ingaru.Java.golmania.models;
 
 import org.springframework.data.mongodb.core.mapping.Document;
-import java.util.List;
+import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.annotation.Id;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.springframework.data.mongodb.core.mapping.Field;
 
-
+import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ApiFootballDto(
         @JsonProperty("response") List<Item> response
 ) {
-    // ESTE es el documento que guardarás en Mongo
+
+    // Mongo document for "fixtures"
     @Document(collection = "fixtures")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Item(
+            // This will be MongoDB’s _id
+            // We don’t expect it from the API payload, we set it ourselves before saving.
+            @Id @JsonProperty(value = "_id", access = JsonProperty.Access.READ_ONLY) Long id,
+
             Fix fixture,
             Teams teams,
             Goals goals,
@@ -24,15 +30,14 @@ public record ApiFootballDto(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Fix(
-            // <-- Evita el nombre 'id' en el record; mapea a 'id' en JSON/Mongo
-            @Field("id") @JsonProperty("id") Long fixtureId,
+            @Field("id") @JsonProperty("id") long fixtureId,  // Upstream ID (source of truth)
             String date,
             Venue venue
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Venue(
-            @Field("id") @JsonProperty("id") Integer venueId,
+            Integer id,
             String name,
             String city
     ) {}
@@ -42,7 +47,7 @@ public record ApiFootballDto(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Team(
-            @Field("id") @JsonProperty("id") Integer teamId,
+            Integer id,
             String name,
             String logo,
             Boolean winner
