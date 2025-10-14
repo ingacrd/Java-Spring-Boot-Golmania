@@ -2,7 +2,7 @@ package com.ingaru.Java.golmania.controllers;
 
 import com.ingaru.Java.golmania.Services.FixtureService;
 import com.ingaru.Java.golmania.models.ApiFootballDto;
-import org.springframework.web.bind.annotation.RestController;
+import com.ingaru.Java.golmania.models.ApiFootballDto.Item;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,20 +18,20 @@ public class FixtureController {
         this.fixtureService = fixtureService;
     }
 
-    // GET /api/fixtures -> Seed if empty, otherwise upsert, then return all from Mongo
+    /**
+     * - If DB has no fixtures: fetch league=34, season=2026 and save all.
+     * - Else: update only past fixtures with missing scores.
+     * - Finally: return all fixtures from MongoDB.
+     */
     @GetMapping
-    public List<ApiFootballDto.Item> getFixtures() {
-        return fixtureService.ensureSeedAndReturnAll();
+    public ResponseEntity<List<Item>> getAllFromMongoInitOrUpdate() {
+        return ResponseEntity.ok(fixtureService.initOrUpdateThenListAll());
     }
 
-    // GET /api/fixtures/{id} -> Load by upstream fixture id (also Mongo _id)
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiFootballDto.Item> getFixtureById(@PathVariable("id") long fixtureId) {
-        ApiFootballDto.Item doc = fixtureService.getFixtureById(fixtureId);
-        return (doc == null) ? ResponseEntity.notFound().build() : ResponseEntity.ok(doc);
-    }
-
-    // GET /api/fixtures/byLeagueSeason?league=34&season=2026 (raw API passthrough if you need it)
+    /**
+     * Optional: raw passthrough to inspect upstream data without persisting.
+     * GET /api/fixtures/byLeagueSeason?league=34&season=2026
+     */
     @GetMapping("/byLeagueSeason")
     public ResponseEntity<ApiFootballDto> getFixturesByLeagueAndSeason(
             @RequestParam("league") long league,
@@ -41,7 +41,4 @@ public class FixtureController {
 
     @GetMapping("/ping")
     public String ping() { return "pong"; }
-
-
 }
-

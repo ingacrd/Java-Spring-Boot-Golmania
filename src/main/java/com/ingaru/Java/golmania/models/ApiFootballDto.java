@@ -1,27 +1,27 @@
 package com.ingaru.Java.golmania.models;
 
-import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
-import org.springframework.data.annotation.Id;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
 
+/**
+ * Wire DTO for API-Football AND Mongo entity for a fixture item.
+ * We persist each Item with _id = fixture.id (from upstream).
+ */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ApiFootballDto(
         @JsonProperty("response") List<Item> response
 ) {
-
-    // Mongo document for "fixtures"
     @Document(collection = "fixtures")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Item(
-            // This will be MongoDB’s _id
-            // We don’t expect it from the API payload, we set it ourselves before saving.
-            @Id @JsonProperty(value = "_id", access = JsonProperty.Access.READ_ONLY) Long id,
-
+            // MongoDB _id, we set this from fixture.id before saving.
+            @Id Long id,
             Fix fixture,
             Teams teams,
             Goals goals,
@@ -30,28 +30,32 @@ public record ApiFootballDto(
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Fix(
-            @Field("id") @JsonProperty("id") long fixtureId,  // Upstream ID (source of truth)
+            // Upstream fixture id from the API payload
+            @Field("id") @JsonProperty("id") long fixtureId,
             String date,
-            Venue venue
+            Venue venue,
+            Status status
     ) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static record Venue(
-            Integer id,
-            String name,
-            String city
-    ) {}
+    public static record Status(
+            String longName, // "Match Finished" from API may arrive as "long"
+            @JsonProperty("long") String longText // keep alias “long” to be safe
+    ) {
+        public String resolvedLong() {
+            // prefer the official "long" key if present
+            return longText != null ? longText : longName;
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static record Venue(Integer id, String name, String city) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Teams(Team home, Team away) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static record Team(
-            Integer id,
-            String name,
-            String logo,
-            Boolean winner
-    ) {}
+    public static record Team(Integer id, String name, String logo, Boolean winner) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static record Goals(Integer home, Integer away) {}
