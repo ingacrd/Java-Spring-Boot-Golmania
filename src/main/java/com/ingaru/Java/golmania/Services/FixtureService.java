@@ -59,7 +59,7 @@ public class FixtureService {
     }
 
     /**
-     * Requirement: "Update in MongoDB only the fixtures that have teams_home_goals = null
+     * Update in MongoDB only the fixtures that have teams_home_goals = null
      * or empty AND the match date/time has passed; when API says 'Match Finished'."
      */
     public List<Item> updatePastFixturesWithMissingScore() {
@@ -75,7 +75,6 @@ public class FixtureService {
             System.out.println(it.fixture());
             System.out.println(it);
 
-
             // fixture.date must be in the past
             if (!isPast(it)) continue;
 
@@ -88,12 +87,16 @@ public class FixtureService {
             Item fresh = live.response().get(0);
 
             // status.long == "Match Finished" (handle both "long" and alias)
-            String status = fresh.fixture().status() != null ? fresh.fixture().status().resolvedLong() : null;
+            String status = fresh.fixture().status() != null ? fresh.fixture().status().longText() : null;
             if (!"Match Finished".equalsIgnoreCase(status)) continue;
 
             // build an updated copy of our existing entity: keep _id, replace goals
             Goals g = fresh.goals() != null ? fresh.goals() : new Goals(null, null);
-            Item updatedItem = new Item(it.id(), it.fixture(), it.teams(), g, it.league());
+            Item updatedItem = new Item(it._id(), it.fixture(), it.teams(), g, it.league(),it.score(),       // conserva si existía
+                    it.events(),
+                    it.lineups(),
+                    it.statistics(),
+                    it.players()  );
 
             repo.save(updatedItem);
             updated.add(updatedItem);
@@ -143,7 +146,9 @@ public class FixtureService {
         for (Item it : items) {
             Long mongoId = it.fixture() != null ? it.fixture().fixtureId() : null;
             if (mongoId == null) continue; // skip broken rows
-            Item withId = new Item(mongoId, it.fixture(), it.teams(), it.goals(), it.league());
+            Item withId = new Item(mongoId, it.fixture(), it.teams(), it.goals(), it.league(), null, null, null, null, null);
+
+
             toSave.add(withId);
         }
         if (!toSave.isEmpty()) repo.saveAll(toSave);
@@ -168,4 +173,90 @@ public class FixtureService {
             throw new IllegalStateException("Failed to parse API-Football response", e);
         }
     }
+
+    private ApiFootballDto fetchFixtureDetailById(long fixtureId) {
+        try {
+            URI uri = UriComponentsBuilder
+                    .newInstance()
+                    .scheme("https")
+                    .host(apiHost) // mismo host que ya usas, p.ej.: v3.football.api-sports.io
+                    .path("/fixtures")
+                    .queryParam("id", fixtureId)
+                    .build()
+                    .toUri();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("x-apisports-key", apiKey);
+            headers.set("x-rapidapi-host", apiHost);
+            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+            HttpEntity<Void> reqEntity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> resp = rest.exchange(uri, HttpMethod.GET, reqEntity, String.class);
+            if (!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null) {
+                throw new IllegalStateException("API-Football error (detail by id): " + resp.getStatusCode());
+            }
+            return mapper.readValue(resp.getBody(), ApiFootballDto.class);
+        } catch (RestClientException e) {
+            throw new IllegalStateException("HTTP error calling API-Football (detail by id)", e);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to parse API-Football detail response", e);
+        }
+    }
+
+    public ApiFootballDto.Item getFixtureByIdWithDetails(long fixtureId) {
+
+        ApiFootballDto.Item existing = repo.findByFixture_FixtureId(fixtureId);
+        if (repo.hasDetails(existing)) {
+            System.out.println("Details exist in MongoDB");
+            return existing;
+        }
+
+        System.out.println("Fetching details from API Football");
+        ApiFootballDto apiDto = fetchFixtureDetailById(fixtureId);
+        if (apiDto == null || apiDto.response() == null || apiDto.response().isEmpty()) {
+            if (existing != null) return existing;
+            throw new IllegalStateException("Fixture id " + fixtureId + " not found at API-Football.");
+        }
+
+        ApiFootballDto.Item detailed = apiDto.response().get(0);
+
+        if (existing != null) {
+            detailed = mergeItems(existing, detailed);
+        }
+
+        repo.upsert(detailed);
+
+        return detailed;
+    }
+
+    private ApiFootballDto.Item mergeItems(ApiFootballDto.Item existing, ApiFootballDto.Item detailed) {
+        return new ApiFootballDto.Item(
+                existing != null && existing._id() != null
+                        ? existing._id()
+                        : (detailed != null && detailed._id() != null
+                        ? detailed._id()
+                        : (detailed != null && detailed.fixture() != null ? detailed.fixture().fixtureId() : null)
+                ),
+                (detailed != null && detailed.fixture() != null) ? detailed.fixture()
+                        : (existing != null ? existing.fixture() : null),
+                (detailed != null && detailed.teams() != null) ? detailed.teams()
+                        : (existing != null ? existing.teams() : null),
+                (detailed != null && detailed.goals() != null) ? detailed.goals()
+                        : (existing != null ? existing.goals() : null),
+                (detailed != null && detailed.league() != null) ? detailed.league()
+                        : (existing != null ? existing.league() : null),
+                (detailed != null && detailed.score() != null) ? detailed.score()
+                        : (existing != null ? existing.score() : null),
+                (detailed != null && detailed.events() != null) ? detailed.events()
+                        : (existing != null ? existing.events() : null),
+                (detailed != null && detailed.lineups() != null) ? detailed.lineups()
+                        : (existing != null ? existing.lineups() : null),
+                (detailed != null && detailed.statistics() != null) ? detailed.statistics()
+                        : (existing != null ? existing.statistics() : null),
+                (detailed != null && detailed.players() != null) ? detailed.players()
+                        : (existing != null ? existing.players() : null)
+        );
+    }
+
+
 }
