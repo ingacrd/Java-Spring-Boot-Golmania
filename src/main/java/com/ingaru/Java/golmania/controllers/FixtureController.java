@@ -39,6 +39,12 @@ public class FixtureController {
         return ResponseEntity.ok(fixtureService.getFixturesByLeagueAndSeason(league, season));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Item> getFixtureById(@PathVariable("id") long fixtureId) {
+        ApiFootballDto.Item item = fixtureService.getFixtureByIdWithDetails(fixtureId);
+        return ResponseEntity.ok(item);
+    }
+
     @GetMapping("/ping")
     public String ping() { return "pong"; }
 }
